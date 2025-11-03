@@ -2,7 +2,7 @@
 Модуль с PyTorch моделью для распознавания жестов.
 
 Модель принимает координаты суставов руки (21 точка × 3 координаты = 63 значения)
-и классифицирует жест в одно из слов: "Hello", "Thanks", "Yes", "No".
+и классифицирует жест в одно из слов: "Hello", "Thanks", "Yes", "No", "Love".
 """
 
 import torch
@@ -17,10 +17,10 @@ class GestureClassifier(nn.Module):
     Архитектура:
     - Входной слой: 63 значения (21 точка × 3 координаты)
     - Скрытый слой: 128 нейронов
-    - Выходной слой: 4 класса (Hello, Thanks, Yes, No)
+    - Выходной слой: 5 классов (Hello, Thanks, Yes, No, Love)
     """
     
-    def __init__(self, input_size=63, hidden_size=128, num_classes=4):
+    def __init__(self, input_size=63, hidden_size=128, num_classes=5):
         super(GestureClassifier, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
@@ -45,7 +45,7 @@ class GestureClassifier(nn.Module):
 
 
 # Список распознаваемых жестов
-GESTURE_CLASSES = ["Hello", "Thanks", "Yes", "No"]
+GESTURE_CLASSES = ["Hello", "Thanks", "Yes", "No", "Love"]
 
 
 class GestureModelWrapper:

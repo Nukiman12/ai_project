@@ -296,7 +296,7 @@ def main():
     
     # Создаем модель
     print("\nСоздание модели...")
-    model = GestureClassifier(input_size=63, hidden_size=128, num_classes=4)
+    model = GestureClassifier(input_size=63, hidden_size=128, num_classes=5)
     print(f"  Параметров модели: {sum(p.numel() for p in model.parameters())}")
     
     # Обучаем модель

@@ -95,6 +95,7 @@ signvoice_ai/
 - **Thanks** - Спасибо
 - **Yes** - Да
 - **No** - Нет
+- **Love** - Люблю
 
 ## Режим заглушки
 
@@ -123,6 +124,9 @@ python train_collect_data.py --gesture Yes --output data
 
 # Сбор данных для жеста "No"
 python train_collect_data.py --gesture No --output data
+
+# Сбор данных для жеста "Love"
+python train_collect_data.py --gesture Love --output data
 ```
 
 **Как использовать скрипт сбора данных:**
@@ -167,7 +171,7 @@ python main.py --model models/gesture_model.pth
 Модель `GestureClassifier` представляет собой простую нейронную сеть:
 - **Входной слой**: 63 значения (21 точка × 3 координаты: x, y, z)
 - **Скрытый слой**: 128 нейронов с ReLU активацией и Dropout (0.2)
-- **Выходной слой**: 4 класса (соответствуют жестам)
+- **Выходной слой**: 5 классов (соответствуют жестам)
 
 ## Нормализация координат
 

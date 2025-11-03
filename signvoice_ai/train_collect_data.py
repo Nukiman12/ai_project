@@ -31,7 +31,7 @@ class DataCollector:
         Инициализация сборщика данных.
         
         Args:
-            gesture_name: Название жеста (Hello, Thanks, Yes, No)
+            gesture_name: Название жеста (Hello, Thanks, Yes, No, Love)
             output_dir: Папка для сохранения данных
             camera_index: Индекс камеры
         """
@@ -204,7 +204,7 @@ def main():
         '--gesture',
         type=str,
         required=True,
-        choices=['Hello', 'Thanks', 'Yes', 'No'],
+        choices=['Hello', 'Thanks', 'Yes', 'No', 'Love'],
         help='Название жеста для сбора данных'
     )
     parser.add_argument(
