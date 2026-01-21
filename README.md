@@ -4,7 +4,28 @@
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Educational-green.svg)]()
-[![GUI](https://img.shields.io/badge/GUI-3_versions-orange.svg)]()
+[![GUI](https://img.shields.io/badge/GUI-6_versions-orange.svg)]()
+[![Enterprise](https://img.shields.io/badge/Edition-Enterprise-gold.svg)]()
+
+---
+
+## 🆕 Новое: Enterprise Edition!
+
+**SignVoiceAI Enterprise Edition** - профессиональная версия с полноценной системой пользователей, базой данных, продвинутой аналитикой, 10 темами, достижениями и многим другим!
+
+🚀 [Узнать больше](WHAT_IS_NEW_ENTERPRISE.md) • 📖 [Руководство](ENTERPRISE_README.md) • 📚 [API](API_REFERENCE.md)
+
+**Ключевые возможности Enterprise:**
+- 🔐 Система пользователей с авторизацией
+- 🗄️ База данных SQLite (8 таблиц)
+- 📊 Продвинутая аналитика и статистика
+- 🏆 14 достижений от новичка до легенды
+- 🎨 10 предустановленных тем
+- 🌍 Мультиязычность (RU/EN)
+- ⚙️ 40+ настроек
+- 💾 Экспорт/импорт данных (JSON/CSV)
+- 📝 Продвинутое логирование
+- 📚 Полная API документация
 
 ---
 
@@ -37,7 +58,7 @@
 
 ---
 
-## 🎨 Семь вариантов интерфейса
+## 🎨 Шесть вариантов интерфейса + Enterprise Edition
 
 ### 1. ⚡ Simple Gesture Trainer - **НОВИНКА! РЕКОМЕНДУЕТСЯ**
 
@@ -137,21 +158,52 @@ python signvoice_ai/main.py
 
 📖 [Документация](signvoice_ai/README.md)
 
+### 7. 💎 Enterprise Edition - **НОВИНКА! ПРОФЕССИОНАЛЬНАЯ ВЕРСИЯ**
+
+**Полноценная enterprise-система с авторизацией и аналитикой**
+
+```bash
+# Windows
+signvoice_ai/launch_enterprise.bat
+
+# Linux/macOS
+cd signvoice_ai && ./launch_enterprise.sh
+```
+
+- 🔐 Система пользователей
+- 🗄️ База данных SQLite
+- 📊 Продвинутая аналитика
+- 🏆 14 достижений
+- 🎨 10 тем оформления
+- 🌍 Мультиязычность (RU/EN)
+- 💾 Экспорт/импорт данных
+- 📝 Логирование и мониторинг
+
+📖 [Документация](ENTERPRISE_README.md) | [Что нового](WHAT_IS_NEW_ENTERPRISE.md) | [API](API_REFERENCE.md)
+
 ---
 
 ## 📊 Сравнение интерфейсов
 
-| Характеристика | Classic | Standard | Modern | **Advanced** | **Training** |
-|----------------|---------|----------|--------|--------------|--------------|
-| Библиотека | OpenCV | Tkinter | CustomTkinter | **CustomTkinter** | **CustomTkinter** |
-| Две руки | ❌ | ❌ | ❌ | **✅** | **✅** |
-| Динамические жесты | ❌ | ❌ | ❌ | **✅** | **✅** |
-| Обучение модели | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Дизайн | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | **⭐⭐⭐⭐⭐** | **⭐⭐⭐⭐⭐** |
-| История жестов | ❌ | ✅ | ✅ | ✅ | ✅ |
-| График | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Характеристика | Classic | Standard | Modern | **Advanced** | **Training** | **🆕 Enterprise** |
+|----------------|---------|----------|--------|--------------|--------------|-------------------|
+| Библиотека | OpenCV | Tkinter | CustomTkinter | **CustomTkinter** | **CustomTkinter** | **CustomTkinter** |
+| Две руки | ❌ | ❌ | ❌ | **✅** | **✅** | **✅** |
+| Динамические жесты | ❌ | ❌ | ❌ | **✅** | **✅** | **✅** |
+| Обучение модели | ❌ | ❌ | ❌ | ❌ | **✅** | ❌ |
+| Дизайн | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | **⭐⭐⭐⭐⭐** | **⭐⭐⭐⭐⭐** | **⭐⭐⭐⭐⭐** |
+| История жестов | ❌ | ✅ | ✅ | ✅ | ✅ | **✅ (БД)** |
+| График | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **🆕 Пользователи** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| **🆕 База данных** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅ (8 таблиц)** |
+| **🆕 Аналитика** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| **🆕 Достижения** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅ (14 шт)** |
+| **🆕 Темы** | 1 | 1 | 1 | 1 | 1 | **10** |
+| **🆕 Языки** | 1 | 1 | 1 | 1 | 1 | **2** |
+| **🆕 Экспорт** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅ (JSON/CSV)** |
+| **🆕 API** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
 
-📖 [Детальное сравнение](GUI_COMPARISON.md) | [Динамические жесты](DYNAMIC_GESTURES_README.md)
+📖 [Детальное сравнение](GUI_COMPARISON.md) | [Динамические жесты](DYNAMIC_GESTURES_README.md) | [Enterprise](ENTERPRISE_README.md)
 
 ---
 

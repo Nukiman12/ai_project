@@ -1,0 +1,65 @@
+# SignVoiceAI Enterprise - Ignore patterns
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Exports
+exports/
+*.json.export
+*.csv.export
+
+# User data
+signvoice_enterprise.db
+signvoice_data.db
+
+# Performance reports
+performance_report.txt
+*.report
+
+# Temporary files
+*.tmp
+*.temp
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Virtual environments
+venv/
+venv311/
+env/
+ENV/
+
+# Python cache
+*.py[cod]
+*$py.class
+__pycache__/
+.pytest_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+
+
+
+

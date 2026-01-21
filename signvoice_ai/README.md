@@ -195,6 +195,9 @@ python train_model.py --data data --output models/gesture_model.pth
 - `--learning_rate`: Скорость обучения (по умолчанию: 0.001)
 - `--test_size`: Доля тестовой выборки (по умолчанию: 0.2)
 
+
+
+
 **Пример с параметрами:**
 ```bash
 python train_model.py --data data --output models/gesture_model.pth --epochs 100 --batch_size 64

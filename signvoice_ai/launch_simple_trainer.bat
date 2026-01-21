@@ -1,14 +1,35 @@
 @echo off
+chcp 65001 >nul
 title SignVoiceAI - Simple Gesture Trainer
 echo.
-echo ====================================
-echo   SignVoiceAI - Simple Trainer
-echo ====================================
+echo ============================================================
+echo     SignVoiceAI - Простой тренер жестов
+echo ============================================================
 echo.
-echo Starting gesture trainer...
+echo Запуск тренера...
 echo.
-python gesture_trainer_simple.py
+echo ИНСТРУКЦИЯ:
+echo   1. Нажмите "Новый жест" и введите название
+echo   2. Покажите жест в камеру
+echo   3. Нажмите "Записать" и держите жест 3-5 сек
+echo   4. Повторите 5-10 раз с разных углов
+echo   5. Добавьте минимум 3-5 жестов
+echo   6. Нажмите "Обучить модель"
 echo.
-pause
+echo ============================================================
+echo.
+
+REM Попытка использовать Python 3.11
+py -3.11 gesture_trainer_simple.py 2>nul
+if %errorlevel% neq 0 (
+    echo Python 3.11 не найден, используем стандартный Python...
+    python gesture_trainer_simple.py
+)
+
+echo.
+echo ============================================================
+echo Тренер завершён. Нажмите любую клавишу для выхода...
+echo ============================================================
+pause >nul
 
 
