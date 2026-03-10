@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.camera import Camera
 from utils.gestures import GestureDetector, DynamicGestureRecognizer
 from utils.speech import TextToSpeech
+from utils.sentence_builder import SentenceBuilder
 from model.gesture_model import GestureModelWrapper, GESTURE_CLASSES
 from model.dynamic_gesture_model import DynamicGestureModelWrapper, DYNAMIC_GESTURE_CLASSES
 
@@ -68,6 +69,10 @@ class AdvancedSignVoiceGUI:
         # История
         self.gesture_history = deque(maxlen=20)
         self.confidence_history = deque(maxlen=50)
+
+        # Предложение из жестов
+        self.sentence_builder = SentenceBuilder(max_tokens=40, dedupe_window_s=0.7)
+        self.sentence_var = ctk.StringVar(value="")
         
         # Данные рук
         self.hands_status = {'left': False, 'right': False}
@@ -426,6 +431,35 @@ class AdvancedSignVoiceGUI:
             text_color=("#42a5f5", "#42a5f5")
         )
         header.pack(pady=(15, 10), padx=15, anchor="w")
+
+        sentence_header = ctk.CTkFrame(history_frame, fg_color="transparent")
+        sentence_header.pack(fill="x", padx=15, pady=(0, 5))
+
+        ctk.CTkLabel(
+            sentence_header,
+            text="✍️ Предложение:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=("#9ca3af", "#9ca3af")
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            sentence_header,
+            text="Очистить",
+            width=80,
+            height=24,
+            command=self.clear_sentence
+        ).pack(side="right")
+
+        self.sentence_label = ctk.CTkLabel(
+            history_frame,
+            textvariable=self.sentence_var,
+            font=ctk.CTkFont(size=11),
+            text_color=("#e5e7eb", "#e5e7eb"),
+            wraplength=400,
+            justify="left",
+            anchor="w"
+        )
+        self.sentence_label.pack(fill="x", padx=15, pady=(0, 10))
         
         self.history_scrollable = ctk.CTkScrollableFrame(
             history_frame,
@@ -794,6 +828,8 @@ class AdvancedSignVoiceGUI:
         if len(self.history_widgets) > 20:
             old_widget = self.history_widgets.pop()
             old_widget.destroy()
+
+        self.add_to_sentence(gesture)
     
     def clear_history(self):
         """Очистка истории."""
@@ -813,6 +849,16 @@ class AdvancedSignVoiceGUI:
         self.history_placeholder.pack(pady=20)
         
         self.update_chart()
+
+    def add_to_sentence(self, gesture):
+        """Добавление жеста в предложение."""
+        if self.sentence_builder.add_gesture(gesture):
+            self.sentence_var.set(self.sentence_builder.get_sentence())
+
+    def clear_sentence(self):
+        """Очистка предложения."""
+        self.sentence_builder.reset()
+        self.sentence_var.set("")
     
     def repeat_gesture(self):
         """Повторное озвучивание."""

@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.camera import Camera
 from utils.gestures import GestureDetector
 from utils.speech import TextToSpeech
+from utils.sentence_builder import SentenceBuilder
 from model.gesture_model import GestureModelWrapper, GESTURE_CLASSES
 
 
@@ -48,6 +49,10 @@ class SignVoiceAI:
         self.frame_count = 0
         self.gesture_stable_count = 0  # Счетчик стабильности жеста
         self.stability_threshold = 5  # Минимальное количество кадров для признания жеста стабильным
+
+        # Предложение из жестов
+        self.sentence_builder = SentenceBuilder(max_tokens=40, dedupe_window_s=0.7)
+        self.current_sentence = ""
         
         # Инициализация компонентов
         print("=" * 60)
@@ -132,8 +137,12 @@ class SignVoiceAI:
                         if (self.gesture_stable_count >= self.stability_threshold and 
                             gesture != self.last_gesture):
                             self.last_gesture = gesture
+                            if self.sentence_builder.add_gesture(gesture):
+                                self.current_sentence = self.sentence_builder.get_sentence()
                             self.tts.speak(gesture)
                             print(f"Жест распознан: {gesture} (уверенность: {confidence:.2f})")
+                            if self.current_sentence:
+                                print(f"Предложение: {self.current_sentence}")
                         
                         # Отображаем результат на кадре
                         self._draw_gesture_info(annotated_frame, gesture, confidence)
@@ -185,7 +194,7 @@ class SignVoiceAI:
         
         # Фон для текста
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (w - 10, 120), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (10, 10), (w - 10, 150), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
         
         # Текст с жестом
@@ -197,6 +206,12 @@ class SignVoiceAI:
         confidence_text = f"Уверенность: {confidence:.2f}"
         cv2.putText(frame, confidence_text, (20, 90),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        # Предложение
+        if self.current_sentence:
+            sentence_text = f"Фраза: {self.current_sentence}"
+            cv2.putText(frame, sentence_text, (20, 130),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
         
         # Статус стабильности
         if self.gesture_stable_count >= self.stability_threshold:

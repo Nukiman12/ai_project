@@ -13,7 +13,7 @@ import threading
 from datetime import datetime
 from collections import deque
 import numpy as np
-from tkinter import messagebox
+from tkinter import messagebox, Toplevel, Text, Scrollbar, END
 import pickle
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.camera import Camera
 from utils.gestures import GestureDetector
 from utils.speech import TextToSpeech
+from utils.sentence_builder import SentenceBuilder
+from utils.gesture_store import GestureStore
+from utils.ollama_client import OllamaClient
 
 # Импортируем recognizer из trainer
 from gesture_trainer_simple import ImprovedGestureRecognizer
@@ -69,6 +72,17 @@ class GestureRecognizerApp:
         # История
         self.gesture_history = deque(maxlen=20)
         self.history_widgets = []
+
+        # Предложение из жестов
+        self.sentence_builder = SentenceBuilder(max_tokens=40, dedupe_window_s=0.7)
+        self.sentence_var = ctk.StringVar(value="")
+
+        self.session_events = []
+        self.gesture_store = GestureStore()
+        self.ollama_url_var = ctk.StringVar(value="http://localhost:11434")
+        self.ollama_model_var = ctk.StringVar(value="llama3.1")
+        self.ollama_temperature_var = ctk.DoubleVar(value=0.2)
+        self._sending_to_ai = False
         
         # Настройки
         self.min_confidence = ctk.DoubleVar(value=0.6)
@@ -260,6 +274,63 @@ class GestureRecognizerApp:
             text_color=("#42a5f5", "#42a5f5")
         )
         header.pack(pady=(15, 10), padx=15, anchor="w")
+
+        sentence_header = ctk.CTkFrame(history_frame, fg_color="transparent")
+        sentence_header.pack(fill="x", padx=15, pady=(0, 5))
+
+        ctk.CTkLabel(
+            sentence_header,
+            text="✍️ Предложение:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=("#9ca3af", "#9ca3af")
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            sentence_header,
+            text="Очистить",
+            width=80,
+            height=24,
+            command=self.clear_sentence
+        ).pack(side="right")
+
+        self.sentence_label = ctk.CTkLabel(
+            history_frame,
+            textvariable=self.sentence_var,
+            font=ctk.CTkFont(size=11),
+            text_color=("#e5e7eb", "#e5e7eb"),
+            wraplength=360,
+            justify="left",
+            anchor="w"
+        )
+        self.sentence_label.pack(fill="x", padx=15, pady=(0, 10))
+
+        actions = ctk.CTkFrame(history_frame, fg_color="transparent")
+        actions.pack(fill="x", padx=15, pady=(0, 10))
+
+        self.save_gestures_btn = ctk.CTkButton(
+            actions,
+            text="💾 Сохранить",
+            height=32,
+            command=self.save_current_gestures
+        )
+        self.save_gestures_btn.pack(side="left", expand=True, fill="x", padx=(0, 8))
+
+        self.send_to_ai_btn = ctk.CTkButton(
+            actions,
+            text="🤖 Отправить в ИИ",
+            height=32,
+            command=self.send_saved_to_ai
+        )
+        self.send_to_ai_btn.pack(side="left", expand=True, fill="x", padx=(0, 8))
+
+        self.clear_saved_btn = ctk.CTkButton(
+            actions,
+            text="🧹 Очистить сохранённые",
+            height=32,
+            fg_color=("#4a5568", "#4a5568"),
+            command=self.clear_saved_gestures
+        )
+        self.clear_saved_btn.pack(side="left", expand=True, fill="x")
         
         self.history_scrollable = ctk.CTkScrollableFrame(
             history_frame,
@@ -349,6 +420,34 @@ class GestureRecognizerApp:
             text_color=("#6b7280", "#6b7280"),
             justify="left"
         ).pack(anchor="w", padx=15, pady=(0, 10))
+
+        ollama_frame = ctk.CTkFrame(settings_container, corner_radius=10, fg_color=("#2b2b2b", "#1a1a1a"))
+        ollama_frame.pack(fill="x", pady=(15, 0))
+
+        ctk.CTkLabel(
+            ollama_frame,
+            text="Ollama",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=("#9ca3af", "#9ca3af"),
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+
+        url_row = ctk.CTkFrame(ollama_frame, fg_color="transparent")
+        url_row.pack(fill="x", padx=15, pady=(0, 8))
+
+        ctk.CTkLabel(url_row, text="URL:", width=40, anchor="w").pack(side="left")
+        ctk.CTkEntry(url_row, textvariable=self.ollama_url_var).pack(side="left", fill="x", expand=True)
+
+        model_row = ctk.CTkFrame(ollama_frame, fg_color="transparent")
+        model_row.pack(fill="x", padx=15, pady=(0, 8))
+
+        ctk.CTkLabel(model_row, text="Модель:", width=60, anchor="w").pack(side="left")
+        ctk.CTkEntry(model_row, textvariable=self.ollama_model_var).pack(side="left", fill="x", expand=True)
+
+        temp_row = ctk.CTkFrame(ollama_frame, fg_color="transparent")
+        temp_row.pack(fill="x", padx=15, pady=(0, 12))
+
+        ctk.CTkLabel(temp_row, text="Темп.:", width=60, anchor="w").pack(side="left")
+        ctk.CTkSlider(temp_row, from_=0.0, to=1.0, number_of_steps=20, variable=self.ollama_temperature_var).pack(side="left", fill="x", expand=True)
     
     def toggle_recognition(self):
         """Переключение распознавания."""
@@ -472,10 +571,84 @@ class GestureRecognizerApp:
         if len(self.history_widgets) > 20:
             old = self.history_widgets.pop()
             old.destroy()
+
+        self.add_to_sentence(gesture)
+        self.session_events.append({"ts": timestamp, "gesture": gesture, "confidence": float(confidence)})
+
+    def save_current_gestures(self):
+        if not self.session_events:
+            messagebox.showwarning("Сохранение", "Нет распознанных жестов для сохранения")
+            return
+
+        record = {
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "sentence": self.sentence_var.get(),
+            "events": list(self.session_events),
+        }
+        self.gesture_store.append_record(record)
+        messagebox.showinfo("Сохранение", f"Сохранено записей: {len(self.gesture_store.list_records())}")
+        self.session_events.clear()
+        self.clear_sentence()
+
+    def clear_saved_gestures(self):
+        self.gesture_store.clear()
+        messagebox.showinfo("Сохранение", "Сохранённые жесты очищены")
+
+    def send_saved_to_ai(self):
+        if self._sending_to_ai:
+            return
+
+        records = self.gesture_store.list_records()
+        if not records:
+            messagebox.showwarning("ИИ", "Нет сохранённых записей. Сначала нажмите 'Сохранить'.")
+            return
+
+        prompt = self.gesture_store.build_prompt(records)
+        self._sending_to_ai = True
+        self.send_to_ai_btn.configure(state="disabled")
+
+        def worker():
+            try:
+                client = OllamaClient(base_url=self.ollama_url_var.get(), model=self.ollama_model_var.get())
+                text = client.generate(prompt=prompt, temperature=float(self.ollama_temperature_var.get()))
+                self.root.after(0, lambda: self._on_ai_response(text))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("ИИ", str(e)))
+            finally:
+                self.root.after(0, self._ai_send_finished)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _ai_send_finished(self):
+        self._sending_to_ai = False
+        if self.send_to_ai_btn.winfo_exists():
+            self.send_to_ai_btn.configure(state="normal")
+
+    def _on_ai_response(self, text: str):
+        win = Toplevel(self.root)
+        win.title("Ответ ИИ (Ollama)")
+        win.geometry("900x600")
+
+        scrollbar = Scrollbar(win)
+        scrollbar.pack(side="right", fill="y")
+
+        text_widget = Text(win, wrap="word", yscrollcommand=scrollbar.set)
+        text_widget.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=text_widget.yview)
+
+        text_widget.insert(END, text)
+        text_widget.configure(state="disabled")
+
+        try:
+            if self.tts:
+                self.tts.speak(text, force=True)
+        except Exception:
+            pass
     
     def clear_history(self):
         """Очистка истории."""
         self.gesture_history.clear()
+        self.session_events.clear()
         
         for widget in self.history_widgets:
             widget.destroy()
@@ -488,6 +661,16 @@ class GestureRecognizerApp:
             text_color=("#6b7280", "#6b7280")
         )
         self.history_placeholder.pack(pady=20)
+
+    def add_to_sentence(self, gesture):
+        """Добавление жеста в предложение."""
+        if self.sentence_builder.add_gesture(gesture):
+            self.sentence_var.set(self.sentence_builder.get_sentence())
+
+    def clear_sentence(self):
+        """Очистка предложения."""
+        self.sentence_builder.reset()
+        self.sentence_var.set("")
     
     def repeat_gesture(self):
         """Повтор жеста."""

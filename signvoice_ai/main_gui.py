@@ -28,6 +28,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.camera import Camera
 from utils.gestures import GestureDetector
 from utils.speech import TextToSpeech
+from utils.sentence_builder import SentenceBuilder
+from utils.gesture_store import GestureStore
+from utils.ollama_client import OllamaClient
 from model.gesture_model import GestureModelWrapper, GESTURE_CLASSES
 
 
@@ -69,6 +72,17 @@ class ModernSignVoiceAI:
         # История жестов
         self.gesture_history = deque(maxlen=20)
         self.confidence_history = deque(maxlen=50)
+
+        # Предложение из жестов
+        self.sentence_builder = SentenceBuilder(max_tokens=40, dedupe_window_s=0.7)
+        self.sentence_var = tk.StringVar(value="")
+
+        self.session_events = []
+        self.gesture_store = GestureStore()
+        self.ollama_url_var = tk.StringVar(value="http://localhost:11434")
+        self.ollama_model_var = tk.StringVar(value="llama3.1")
+        self.ollama_temperature_var = tk.DoubleVar(value=0.2)
+        self._sending_to_ai = False
         
         # Настройки
         self.settings = {
@@ -300,7 +314,73 @@ class ModernSignVoiceAI:
                                      bg='#2d2d2d', fg='#14ffec',
                                      relief=tk.FLAT)
         history_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        
+
+        # Панель предложения
+        sentence_frame = tk.Frame(history_frame, bg='#2d2d2d')
+        sentence_frame.pack(fill=tk.X, padx=8, pady=(8, 0))
+
+        tk.Label(sentence_frame, text="✍️ Предложение:",
+                 font=('Segoe UI', 10, 'bold'),
+                 bg='#2d2d2d', fg='#a0a0a0').pack(side=tk.LEFT)
+
+        clear_sentence_btn = tk.Button(
+            sentence_frame,
+            text="Очистить",
+            font=('Segoe UI', 8),
+            bg='#1e1e1e',
+            fg='#ffffff',
+            command=self.clear_sentence
+        )
+        clear_sentence_btn.pack(side=tk.RIGHT)
+
+        self.sentence_label = tk.Label(
+            history_frame,
+            textvariable=self.sentence_var,
+            font=('Segoe UI', 10),
+            bg='#1e1e1e',
+            fg='#ffffff',
+            wraplength=360,
+            justify=tk.LEFT,
+            anchor='w'
+        )
+        self.sentence_label.pack(fill=tk.X, padx=8, pady=(6, 8))
+
+        actions = tk.Frame(history_frame, bg='#2d2d2d')
+        actions.pack(fill=tk.X, padx=8, pady=(0, 8))
+
+        self.save_gestures_btn = tk.Button(
+            actions,
+            text="💾 Сохранить",
+            font=('Segoe UI', 9, 'bold'),
+            bg='#0d7377',
+            fg='#ffffff',
+            relief=tk.FLAT,
+            command=self.save_current_gestures,
+        )
+        self.save_gestures_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 6))
+
+        self.send_to_ai_btn = tk.Button(
+            actions,
+            text="🤖 Отправить в ИИ",
+            font=('Segoe UI', 9, 'bold'),
+            bg='#0d7377',
+            fg='#ffffff',
+            relief=tk.FLAT,
+            command=self.send_saved_to_ai,
+        )
+        self.send_to_ai_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 6))
+
+        self.clear_saved_btn = tk.Button(
+            actions,
+            text="🧹 Очистить сохранённые",
+            font=('Segoe UI', 9),
+            bg='#1e1e1e',
+            fg='#ffffff',
+            relief=tk.FLAT,
+            command=self.clear_saved_gestures,
+        )
+        self.clear_saved_btn.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         # Скроллбар
         scrollbar = tk.Scrollbar(history_frame, bg='#2d2d2d')
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 5), pady=5)
@@ -415,6 +495,44 @@ class ModernSignVoiceAI:
                                  justify=tk.LEFT,
                                  wraplength=350)
         gestures_label.grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 5))
+
+        row += 1
+        tk.Label(settings_container, text="Ollama URL:",
+                 font=('Segoe UI', 9),
+                 bg='#2d2d2d', fg='#a0a0a0').grid(row=row, column=0, sticky='w', pady=5)
+
+        tk.Entry(settings_container,
+                  textvariable=self.ollama_url_var,
+                  bg='#1e1e1e',
+                  fg='#ffffff',
+                  relief=tk.FLAT).grid(row=row, column=1, sticky='ew', pady=5)
+
+        row += 1
+        tk.Label(settings_container, text="Ollama модель:",
+                 font=('Segoe UI', 9),
+                 bg='#2d2d2d', fg='#a0a0a0').grid(row=row, column=0, sticky='w', pady=5)
+
+        tk.Entry(settings_container,
+                  textvariable=self.ollama_model_var,
+                  bg='#1e1e1e',
+                  fg='#ffffff',
+                  relief=tk.FLAT).grid(row=row, column=1, sticky='ew', pady=5)
+
+        row += 1
+        tk.Label(settings_container, text="Ollama темп.:",
+                 font=('Segoe UI', 9),
+                 bg='#2d2d2d', fg='#a0a0a0').grid(row=row, column=0, sticky='w', pady=5)
+
+        tk.Scale(settings_container,
+                  from_=0.0,
+                  to=1.0,
+                  resolution=0.05,
+                  orient=tk.HORIZONTAL,
+                  variable=self.ollama_temperature_var,
+                  bg='#2d2d2d',
+                  fg='#ffffff',
+                  troughcolor='#1e1e1e',
+                  highlightthickness=0).grid(row=row, column=1, sticky='ew', pady=5)
         
         settings_container.columnconfigure(1, weight=1)
     
@@ -586,13 +704,96 @@ class ModernSignVoiceAI:
         
         self.gesture_history.append(entry)
         self.history_listbox.insert(0, entry)
-    
+        self.add_to_sentence(gesture)
+        self.session_events.append({"ts": timestamp, "gesture": gesture, "confidence": float(confidence)})
+
+    def save_current_gestures(self):
+        if not self.session_events:
+            messagebox.showwarning("Сохранение", "Нет распознанных жестов для сохранения")
+            return
+
+        record = {
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "sentence": self.sentence_var.get(),
+            "events": list(self.session_events),
+        }
+        self.gesture_store.append_record(record)
+        messagebox.showinfo("Сохранение", f"Сохранено записей: {len(self.gesture_store.list_records())}")
+        self.session_events.clear()
+        self.clear_sentence()
+
+    def clear_saved_gestures(self):
+        self.gesture_store.clear()
+        messagebox.showinfo("Сохранение", "Сохранённые жесты очищены")
+
+    def send_saved_to_ai(self):
+        if self._sending_to_ai:
+            return
+
+        records = self.gesture_store.list_records()
+        if not records:
+            messagebox.showwarning("ИИ", "Нет сохранённых записей. Сначала нажмите 'Сохранить'.")
+            return
+
+        prompt = self.gesture_store.build_prompt(records)
+        self._sending_to_ai = True
+        if self.send_to_ai_btn:
+            self.send_to_ai_btn.config(state=tk.DISABLED)
+
+        def worker():
+            try:
+                client = OllamaClient(base_url=self.ollama_url_var.get(), model=self.ollama_model_var.get())
+                text = client.generate(prompt=prompt, temperature=float(self.ollama_temperature_var.get()))
+                self.root.after(0, lambda: self._on_ai_response(text))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("ИИ", str(e)))
+            finally:
+                self.root.after(0, self._ai_send_finished)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _ai_send_finished(self):
+        self._sending_to_ai = False
+        if self.send_to_ai_btn:
+            self.send_to_ai_btn.config(state=tk.NORMAL)
+
+    def _on_ai_response(self, text: str):
+        win = tk.Toplevel(self.root)
+        win.title("Ответ ИИ (Ollama)")
+        win.geometry("900x600")
+
+        scrollbar = tk.Scrollbar(win)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        text_widget = tk.Text(win, wrap="word", yscrollcommand=scrollbar.set)
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=text_widget.yview)
+
+        text_widget.insert(tk.END, text)
+        text_widget.config(state=tk.DISABLED)
+
+        try:
+            if self.tts:
+                self.tts.speak(text, force=True)
+        except Exception:
+            pass
+
     def clear_history(self):
         """Очистка истории."""
         self.gesture_history.clear()
         self.history_listbox.delete(0, tk.END)
         self.confidence_history.clear()
         self.update_chart()
+        self.session_events.clear()
+
+    def add_to_sentence(self, gesture):
+        """Добавляет жест в предложение."""
+        if self.sentence_builder.add_gesture(gesture):
+            self.sentence_var.set(self.sentence_builder.get_sentence())
+    def clear_sentence(self):
+        """Очистка предложения."""
+        self.sentence_builder.reset()
+        self.sentence_var.set("")
     
     def repeat_gesture(self):
         """Повторное озвучивание жеста."""

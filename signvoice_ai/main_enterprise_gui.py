@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.camera import Camera
 from utils.gestures import GestureDetector
 from utils.speech import TextToSpeech
+from utils.sentence_builder import SentenceBuilder
 from model.gesture_model import GestureModelWrapper, GESTURE_CLASSES
 from database.db_manager import DatabaseManager
 from analytics.analytics_engine import AnalyticsEngine
@@ -371,6 +372,10 @@ class EnterpriseSignVoiceGUI:
         self.session_id = str(uuid.uuid4())
         self.session_start_time = datetime.now()
         self.gesture_count_since_achievement_check = 0
+
+        # Предложение из жестов
+        self.sentence_builder = SentenceBuilder(max_tokens=60, dedupe_window_s=0.7)
+        self.sentence_var = ctk.StringVar(value="")
         
         # Компоненты обучения
         if TRAINING_AVAILABLE:
@@ -1050,6 +1055,33 @@ class EnterpriseSignVoiceGUI:
             text="📜 История",
             font=ctk.CTkFont(size=14, weight="bold")
         ).pack(pady=(10, 5), padx=10, anchor="w")
+
+        sentence_header = ctk.CTkFrame(history_frame, fg_color="transparent")
+        sentence_header.pack(fill="x", padx=10, pady=(0, 5))
+
+        ctk.CTkLabel(
+            sentence_header,
+            text="✍️ Предложение:",
+            font=ctk.CTkFont(size=12)
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            sentence_header,
+            text="Очистить",
+            width=80,
+            height=24,
+            command=self.clear_sentence
+        ).pack(side="right")
+
+        self.sentence_label = ctk.CTkLabel(
+            history_frame,
+            textvariable=self.sentence_var,
+            font=ctk.CTkFont(size=11),
+            wraplength=340,
+            justify="left",
+            anchor="w"
+        )
+        self.sentence_label.pack(fill="x", padx=10, pady=(0, 10))
         
         self.history_scrollable = ctk.CTkScrollableFrame(history_frame)
         self.history_scrollable.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -1260,7 +1292,7 @@ class EnterpriseSignVoiceGUI:
                                 daemon=True
                             ).start()
                         
-                        if self.tts and self.preferences.get('auto_speak', True):
+                        if self.tts:
                             # TTS в отдельном потоке чтобы не блокировать
                             threading.Thread(target=self.tts.speak, args=(gesture,), daemon=True).start()
                     
@@ -1359,6 +1391,18 @@ class EnterpriseSignVoiceGUI:
         if len(self.history_widgets) > 50:
             old_widget = self.history_widgets.pop()
             old_widget.destroy()
+
+        self.add_to_sentence(gesture)
+
+    def add_to_sentence(self, gesture):
+        """Добавляет жест в предложение."""
+        if self.sentence_builder.add_gesture(gesture):
+            self.sentence_var.set(self.sentence_builder.get_sentence())
+
+    def clear_sentence(self):
+        """Очищает предложение."""
+        self.sentence_builder.reset()
+        self.sentence_var.set("")
     
     def repeat_gesture(self):
         """Повторяет последний жест."""
